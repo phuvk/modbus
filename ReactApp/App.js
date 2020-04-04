@@ -10,10 +10,6 @@ import {
     TextInput
 } from 'react-native';
 
-import TcpSocket from 'react-native-tcp-socket';
-import { NetworkInfo } from 'react-native-network-info';
-import { ModbusMaster } from './src/modbusrtu'
-
 class App extends React.Component {
     constructor(props) {
         super(props);
@@ -26,132 +22,6 @@ class App extends React.Component {
         this.setState({
             chatter: this.state.chatter.concat([msg])
         });
-    }
-
-    startServer = () => {
-        const serverPort = Number(9 + (Math.random() * 999).toFixed(0));
-        const serverHost = "0.0.0.0";
-        let server;
-        server = TcpSocket.createServer((socket) => {
-            this.updateChatter('server connected on ' + JSON.stringify(socket.address()));
-
-            socket.on('data', (data) => {
-                this.updateChatter('Server Received: ' + data);
-                socket.write('Echo server\r\n');
-            });
-
-            socket.on('error', (error) => {
-                this.updateChatter('server client error ' + error);
-            });
-
-            socket.on('close', (error) => {
-                this.updateChatter('server client closed ' + (error ? error : ''));
-            });
-            this.socket = socket;
-        }).listen({ port: serverPort, host: serverHost, reuseAddress: true }, (address) => {
-            this.updateChatter('opened server on ' + JSON.stringify(address));
-        });
-
-        server.on('error', (error) => {
-            this.updateChatter('Server error ' + error);
-        });
-
-        server.on('close', () => {
-            this.updateChatter('server close');
-        });
-
-        this.server = server;
-        this.serverPort = serverPort;
-        this.serverHost = serverHost;
-    }
-
-    closeServer = () => {
-        if (this.server) {
-            this.server.close();
-        }
-        this.server = null;
-    }
-
-    startClient = () => {
-        if (!this.serverIPAddress) {
-            this.updateChatter('please type server address');
-            return;
-        }
-
-        if (!this.port) {
-            this.updateChatter('please type port number');
-            return;
-        }
-
-        let client = TcpSocket.createConnection({
-            port: this.port,
-            host: this.serverIPAddress,
-            localAddress: this.ipv4Address,
-            reuseAddress: true,
-            timeout: 3000,
-            // localPort: 20000,
-            // interface: "wifi"
-        }, (address) => {
-            this.updateChatter('opened client on ' + JSON.stringify(address));
-            client.write('Hello, server! Love, Client.');
-        });
-
-        client.on('data', (data) => {
-            this.updateChatter('Client Received: ' + data);
-            //this.client.destroy(); // kill client after server's response
-            //this.server.close();
-        });
-
-        client.on('error', (error) => {
-            this.updateChatter('client error ' + error);
-        });
-
-        client.on('close', () => {
-            this.updateChatter('client close');
-        });
-
-        this.client = client;
-    }
-
-    sendMessage = () => {
-        if (!this.client) {
-            this.updateChatter('Please start the client');
-            return;
-        }
-
-        if (this.slaveNumber == undefined) {
-            this.updateChatter('Please type slave number');
-            return;
-        }
-
-        if (this.registerNumber == undefined) {
-            this.updateChatter('Please type register number');
-            return;
-        }
-
-        if (this.value == undefined) {
-            this.updateChatter('Please type value');
-            return;
-        }
-
-        const master = new ModbusMaster(this.client);
-
-        //Read from slave with address 1 four holding registers starting from 0.
-        // master.readHoldingRegisters(1, 1, 4).then((data) => {
-        //     //promise will be fulfilled with parsed data
-        //     console.log(data); //output will be [10, 100, 110, 50] (numbers just for example)
-        // }, (err) => {
-        //     //or will be rejected with error
-        // });
-
-        //Write to first slave into second register value 150.
-        //slave, register, value
-        master.writeSingleRegister(this.slaveNumber, this.registerNumber, this.value).then((success) => {
-            this.updateChatter('Send Success');
-        },
-            (error) => {
-                this.updateChatter(error);
-            });
     }
 
     onIPAddress = (address) => {
@@ -174,18 +44,8 @@ class App extends React.Component {
         this.value = parseInt(value);
     }
 
-    componentDidMount() {
-        NetworkInfo.getIPV4Address().then(ipv4Address => {
-            this.ipv4Address = ipv4Address;
-            this.updateChatter(ipv4Address);
-        });
-    }
-
     componentWillUnmount() {
-        if (this.server) {
-            this.server.close();
-        }
-        this.server = null;
+
     }
 
     render() {
@@ -265,6 +125,27 @@ class App extends React.Component {
                             Send Message
                         </Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity style={{
+                        backgroundColor: 'red', height: 50, width: 100,
+                        alignItems: 'center', alignContent: 'center', borderColor: 'gray', borderWidth: 1
+                    }}
+                        onPress={() => this.startPoll()}>
+                        <Text style={{ flex: 1, textAlignVertical: 'center' }}>
+                            Start Poll
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={{
+                        backgroundColor: 'gray', height: 50, width: 100,
+                        alignItems: 'center', alignContent: 'center', borderColor: 'gray', borderWidth: 1
+                    }}
+                        onPress={() => this.stopPoll()}>
+                        <Text style={{ flex: 1, textAlignVertical: 'center' }}>
+                            Stop Poll
+                        </Text>
+                    </TouchableOpacity>
+
                     <ScrollView>
                         {this.state.chatter.map((msg, index) => {
                             return (

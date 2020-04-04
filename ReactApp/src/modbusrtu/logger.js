@@ -3,7 +3,7 @@ export class Logger {
         this.options = options;
     }
 
-    info(string) {
+    info(string) {  // TODO write to file in release
         if (this.options.debug) {
             console.log(string);
         }

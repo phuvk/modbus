@@ -36,7 +36,7 @@ export class SocketHelper {
         this.socket = socket;
         this.logger = new Logger(options);
 
-        this.queue.start();
+        this.bindToSocket();
     }
 
     /**
@@ -49,6 +49,13 @@ export class SocketHelper {
         this.queue.push(task);
 
         return task.promise;
+    }
+
+    /**
+     * @private
+     */
+    bindToSocket() {
+        this.queue.start();
     }
 
     /**
@@ -70,18 +77,18 @@ export class SocketHelper {
             task.reject(new ModbusResponseTimeout(this.options.responseTimeout));
         }, this.options.responseTimeout);
 
-        // const onData = (data) => {
-        //     task.receiveData(data, (response) => {
-        //         this.logger.info('resp ' + response.toString('HEX'));
-        //         task.resolve(response);
-        //     });
-        // };
+        const onData = (data) => {
+            task.receiveData(data, (response) => {
+                this.logger.info('resp ' + response.toString('HEX'));
+                task.resolve(response);
+            });
+        };
 
-        // this.socket.on('data', onData);
+        this.socket.on('data', onData);
 
-        // task.promise.catch(() => {}).finally(() => {
-        //     this.socket.removeListener('data', onData);
-        //     done();
-        // });
+        task.promise.catch(() => {}).finally(() => {
+            this.socket.removeListener('data', onData);
+            done();
+        });
     }
 }

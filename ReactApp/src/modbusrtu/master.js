@@ -16,7 +16,15 @@ import * as packetUtils from './packet-utils';
 export class ModbusMaster {
     constructor(socket, options) {
         socket.on('error', (err) => {
-            console.error(err);
+            if (this.onSocketError) {
+                this.onSocketError(err);
+            }
+        });
+
+        client.on('close', () => {
+            if (this.onSocketClose) {
+                this.onSocketClose();
+            }
         });
 
         this._options = Object.assign({}, {
@@ -61,7 +69,6 @@ export class ModbusMaster {
         const packet = this.createFixedPacket(slave, FUNCTION_CODES.WRITE_SINGLE_REGISTER, register, value);
         retryCount = retryCount || DEFAULT_RETRY_COUNT;
 
-        //this.socket.write(packetUtils.addCrc(buffer));
         const performRequest = (retry) => {
             return new Promise((resolve, reject) => {
                 const funcName = 'writeSingleRegister: ';
